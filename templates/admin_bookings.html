@@ -7,11 +7,33 @@
     <p class="text-secondary mb-0">Historical booking data across all trekkers.</p>
   </div>
 </div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="stat-card p-4 h-100">
+      <div class="text-uppercase small text-secondary">Total Bookings</div>
+      <div class="display-6 fw-bold">{{ bookings|length }}</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card p-4 h-100">
+      <div class="text-uppercase small text-secondary">Booked</div>
+      <div class="display-6 fw-bold">{{ bookings | selectattr('status', 'equalto', 'Booked') | list | length }}</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card p-4 h-100">
+      <div class="text-uppercase small text-secondary">Completed / Cancelled</div>
+      <div class="fw-semibold">Status changes are preserved in the booking history.</div>
+    </div>
+  </div>
+</div>
+
 <div class="card shadow-sm border-0">
   <div class="card-body">
     <div class="table-responsive">
       <table class="table align-middle">
-        <thead><tr><th>ID</th><th>User</th><th>Trek</th><th>Booked On</th><th>Status</th></tr></thead>
+        <thead><tr><th>ID</th><th>User</th><th>Trek</th><th>Booked On</th><th>Status</th><th>Trek Status</th></tr></thead>
         <tbody>
           {% for booking in bookings %}
             <tr>
@@ -19,7 +41,8 @@
               <td>{{ booking.user.name }} ({{ booking.user_id }})</td>
               <td>{{ booking.trek.trek_name }} ({{ booking.trek_id }})</td>
               <td>{{ booking.booking_date.strftime('%d %b %Y') }}</td>
-              <td>{{ booking.status }}</td>
+              <td><span class="badge text-bg-{% if booking.status == 'Booked' %}primary{% elif booking.status == 'Completed' %}success{% else %}secondary{% endif %}">{{ booking.status }}</span></td>
+              <td>{{ booking.trek.status }}</td>
             </tr>
           {% endfor %}
         </tbody>
