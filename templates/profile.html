@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Profile | Trekking Management{% endblock %}
+{% block content %}
+<div class="card shadow-sm border-0 mx-auto" style="max-width: 720px;">
+  <div class="card-body p-4 p-lg-5">
+    <h2 class="fw-bold mb-4">Profile</h2>
+    <form method="post" class="row g-3">
+      <div class="col-12">
+        <label class="form-label">Name</label>
+        <input class="form-control" name="name" value="{{ current_user.name }}" required>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="form-label">Email</label>
+        <input class="form-control" value="{{ current_user.email }}" disabled>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="form-label">Phone</label>
+        <input class="form-control" name="phone" value="{{ current_user.phone or '' }}">
+      </div>
+      <div class="col-12">
+        <label class="form-label">New Password</label>
+        <input class="form-control" type="password" name="password" placeholder="Leave blank to keep current password">
+      </div>
+      <div class="col-12 d-grid d-md-flex gap-2">
+        <button class="btn btn-primary" type="submit">Save Profile</button>
+        <a class="btn btn-outline-secondary" href="{{ url_for('dashboard') }}">Back</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

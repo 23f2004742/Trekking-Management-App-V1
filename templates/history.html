@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}History | Trekking Management{% endblock %}
+{% block content %}
+<div class="card shadow-sm border-0">
+  <div class="card-body">
+    <h2 class="fw-bold mb-3">Trekking History</h2>
+    {% if bookings %}
+      <div class="table-responsive">
+        <table class="table align-middle">
+          <thead><tr><th>ID</th><th>Trek</th><th>Booked On</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for booking in bookings %}
+              <tr>
+                <td>{{ booking.id }}</td>
+                <td>{{ booking.trek.trek_name }}</td>
+                <td>{{ booking.booking_date.strftime('%d %b %Y') }}</td>
+                <td>{{ booking.status }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="text-secondary mb-0">No booking history available.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

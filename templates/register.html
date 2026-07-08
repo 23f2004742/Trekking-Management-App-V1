@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Register | Trekking Management{% endblock %}
+{% block content %}
+<div class="auth-shell mx-auto">
+  <div class="card shadow-sm border-0">
+    <div class="card-body p-4 p-lg-5">
+      <h2 class="fw-bold mb-2">{% if role == 'staff' %}Staff Registration{% else %}Trekker Registration{% endif %}</h2>
+      <p class="text-secondary mb-4">Create your account to start using the trekking portal.</p>
+      <form method="post" class="row g-3">
+        <div class="col-12">
+          <label class="form-label">Full Name</label>
+          <input class="form-control form-control-lg" type="text" name="name" required>
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label">Email</label>
+          <input class="form-control form-control-lg" type="email" name="email" required>
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label">Phone</label>
+          <input class="form-control form-control-lg" type="text" name="phone">
+        </div>
+        <div class="col-12">
+          <label class="form-label">Password</label>
+          <input class="form-control form-control-lg" type="password" name="password" required>
+        </div>
+        <div class="col-12 d-grid">
+          <button class="btn btn-primary btn-lg" type="submit">Create Account</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

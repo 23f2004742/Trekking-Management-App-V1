@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}Manage Trek | Trekking Management{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-4">
+        <h2 class="fw-bold mb-3">Manage Trek</h2>
+        <p class="text-secondary">{{ trek.trek_name }} in {{ trek.location }}</p>
+        <form method="post" class="row g-3">
+          <div class="col-12 col-md-6">
+            <label class="form-label">Available Slots</label>
+            <input class="form-control" type="number" name="available_slots" min="0" max="{{ trek.total_slots }}" value="{{ trek.available_slots }}">
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label">Status</label>
+            <select class="form-select" name="status">
+              <option {% if trek.status == 'Approved' %}selected{% endif %}>Approved</option>
+              <option {% if trek.status == 'Open' %}selected{% endif %}>Open</option>
+              <option {% if trek.status == 'Closed' %}selected{% endif %}>Closed</option>
+              <option {% if trek.status == 'Completed' %}selected{% endif %}>Completed</option>
+            </select>
+          </div>
+          <div class="col-12 d-flex gap-2">
+            <button class="btn btn-primary" type="submit">Save</button>
+            <a class="btn btn-outline-secondary" href="{{ url_for('staff_dashboard') }}">Back</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-4">
+        <h5 class="fw-bold mb-3">Participants</h5>
+        {% if participants %}
+          <div class="table-responsive">
+            <table class="table align-middle">
+              <thead><tr><th>User</th><th>Booking Date</th><th>Status</th></tr></thead>
+              <tbody>
+                {% for booking in participants %}
+                  <tr>
+                    <td>{{ booking.user.name }} ({{ booking.user_id }})</td>
+                    <td>{{ booking.booking_date.strftime('%d %b %Y') }}</td>
+                    <td>{{ booking.status }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="text-secondary mb-0">No participants yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

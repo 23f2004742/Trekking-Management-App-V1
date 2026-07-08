@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Welcome | Trekking Management{% endblock %}
+{% block content %}
+<div class="card p-4 mb-4">
+  <h1 class="h3 mb-3">Trekking Management Application</h1>
+  <p class="mb-3">This app is for admin, staff, and trekkers to manage trekking bookings and trek details.</p>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-primary" href="{{ url_for('login') }}">Login</a>
+    <a class="btn btn-outline-primary" href="{{ url_for('register', role='user') }}">Register Trekker</a>
+    <a class="btn btn-outline-primary" href="{{ url_for('register', role='staff') }}">Register Staff</a>
+  </div>
+</div>
+
+<div class="card p-4">
+  <h2 class="h5 mb-3">Admin login</h2>
+  <ul class="mb-0">
+    <li>Admin ID: admin</li>
+    <li>Admin Password: admin123</li>
+  </ul>
+</div>
+{% endblock %}

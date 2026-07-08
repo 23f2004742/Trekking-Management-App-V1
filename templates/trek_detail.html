@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Trek Details | Trekking Management{% endblock %}
+{% block content %}
+<div class="card shadow-sm border-0 mx-auto" style="max-width: 900px;">
+  <div class="card-body p-4 p-lg-5">
+    <div class="d-flex justify-content-between flex-wrap gap-3 mb-3">
+      <div>
+        <h2 class="fw-bold mb-1">{{ trek.trek_name }}</h2>
+        <p class="text-secondary mb-0">{{ trek.location }} • {{ trek.difficulty }} • {{ trek.duration_days }} days</p>
+      </div>
+      <span class="badge text-bg-primary align-self-start">{{ trek.status }}</span>
+    </div>
+    <div class="row g-3 mb-4">
+      <div class="col-md-4"><div class="feature-card p-3"><div class="small text-secondary">Available Slots</div><div class="h4 fw-bold mb-0">{{ trek.available_slots }}/{{ trek.total_slots }}</div></div></div>
+      <div class="col-md-4"><div class="feature-card p-3"><div class="small text-secondary">Start Date</div><div class="h5 fw-bold mb-0">{{ trek.start_date.strftime('%d %b %Y') if trek.start_date else 'TBA' }}</div></div></div>
+      <div class="col-md-4"><div class="feature-card p-3"><div class="small text-secondary">End Date</div><div class="h5 fw-bold mb-0">{{ trek.end_date.strftime('%d %b %Y') if trek.end_date else 'TBA' }}</div></div></div>
+    </div>
+    <p>{{ trek.description or 'No description available.' }}</p>
+    {% if current_user.role == 'user' %}
+      <div class="d-flex gap-2 flex-wrap">
+        <form method="post" action="{{ url_for('book_trek', trek_id=trek.id) }}">
+          <button class="btn btn-primary" type="submit">Book Trek</button>
+        </form>
+        {% if booking and booking.status == 'Booked' %}
+          <form method="post" action="{{ url_for('cancel_booking', booking_id=booking.id) }}">
+            <button class="btn btn-outline-danger" type="submit">Cancel Booking</button>
+          </form>
+        {% endif %}
+        <a class="btn btn-outline-secondary" href="{{ url_for('user_dashboard') }}">Back</a>
+      </div>
+    {% else %}
+      <a class="btn btn-outline-secondary" href="{{ url_for('dashboard') }}">Back</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

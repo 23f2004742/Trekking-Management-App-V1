@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Search | Trekking Management{% endblock %}
+{% block content %}
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-body p-4">
+    <h2 class="fw-bold mb-3">Search Records</h2>
+    <form method="get" class="row g-3">
+      <div class="col-12 col-md-6">
+        <label class="form-label">Keyword</label>
+        <input class="form-control" name="q" value="{{ query_text }}" placeholder="Search by name or ID">
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="form-label">Scope</label>
+        <select class="form-select" name="scope">
+          <option value="all" {% if scope == 'all' %}selected{% endif %}>All</option>
+          <option value="treks" {% if scope == 'treks' %}selected{% endif %}>Treks</option>
+          <option value="users" {% if scope == 'users' %}selected{% endif %}>Users</option>
+          <option value="staff" {% if scope == 'staff' %}selected{% endif %}>Staff</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-2 d-grid align-items-end">
+        <button class="btn btn-primary" type="submit">Search</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="card shadow-sm border-0 h-100"><div class="card-body"><h5 class="fw-bold">Treks</h5>{% if treks %}<ul class="list-group list-group-flush">{% for trek in treks %}<li class="list-group-item px-0">{{ trek.id }} - {{ trek.trek_name }} ({{ trek.location }})</li>{% endfor %}</ul>{% else %}<p class="text-secondary mb-0">No matches.</p>{% endif %}</div></div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card shadow-sm border-0 h-100"><div class="card-body"><h5 class="fw-bold">Users</h5>{% if users %}<ul class="list-group list-group-flush">{% for user in users %}<li class="list-group-item px-0">{{ user.id }} - {{ user.name }}</li>{% endfor %}</ul>{% else %}<p class="text-secondary mb-0">No matches.</p>{% endif %}</div></div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card shadow-sm border-0 h-100"><div class="card-body"><h5 class="fw-bold">Staff</h5>{% if staff_members %}<ul class="list-group list-group-flush">{% for staff in staff_members %}<li class="list-group-item px-0">{{ staff.id }} - {{ staff.name }}</li>{% endfor %}</ul>{% else %}<p class="text-secondary mb-0">No matches.</p>{% endif %}</div></div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} | Trekking Management{% endblock %}
+{% block content %}
+<div class="card shadow-sm border-0 mx-auto" style="max-width: 720px;">
+  <div class="card-body p-5 text-center">
+    <h1 class="fw-bold mb-3">{{ title }}</h1>
+    <p class="text-secondary mb-4">{{ message }}</p>
+    <a class="btn btn-primary" href="{{ url_for('dashboard') if current_user.is_authenticated else url_for('login') }}">Continue</a>
+  </div>
+</div>
+{% endblock %}

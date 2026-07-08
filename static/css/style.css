@@ -1,0 +1,72 @@
+:root {
+  --bg: #f7f7f7;
+  --ink: #222222;
+  --accent: #0d6efd;
+  --border: #d9d9d9;
+  --muted: #666666;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.nav-shell {
+  background: #ffffff;
+  border-bottom: 1px solid var(--border);
+}
+
+.hero-panel {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.glass-card,
+.feature-card,
+.stat-card,
+.auth-shell .card,
+.card {
+  border-radius: 4px;
+}
+
+.feature-card,
+.stat-card,
+.card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+
+.auth-shell {
+  max-width: 540px;
+}
+
+.text-secondary {
+  color: var(--muted) !important;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background: #0b5ed7;
+  border-color: #0b5ed7;
+}
+
+.table > :not(caption) > * > * {
+  padding: 0.75rem;
+}
+
+.badge {
+  letter-spacing: 0;
+}
+
+.top-4 {
+  top: 1rem;
+}
