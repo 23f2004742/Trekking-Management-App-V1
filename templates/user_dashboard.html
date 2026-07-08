@@ -1,6 +1,35 @@
 {% extends 'base.html' %}
 {% block title %}User Dashboard | Trekking Management{% endblock %}
 {% block content %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+  <div>
+    <h2 class="fw-bold mb-1">User Dashboard</h2>
+    <p class="text-secondary mb-0">Search open treks, book available slots, and track your bookings.</p>
+  </div>
+  <a class="btn btn-outline-secondary" href="{{ url_for('history') }}">View Trekking History</a>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="stat-card p-4 h-100">
+      <div class="text-uppercase small text-secondary">Open Treks</div>
+      <div class="display-6 fw-bold">{{ available_treks|length }}</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card p-4 h-100">
+      <div class="text-uppercase small text-secondary">Your Bookings</div>
+      <div class="display-6 fw-bold">{{ booked_treks|length }}</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card p-4 h-100">
+      <div class="text-uppercase small text-secondary">Booking Rule</div>
+      <div class="fw-semibold">You can only book open treks with available slots.</div>
+    </div>
+  </div>
+</div>
+
 <div class="row g-4">
   <div class="col-lg-4">
     <div class="card shadow-sm border-0">
