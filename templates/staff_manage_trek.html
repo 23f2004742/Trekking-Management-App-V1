@@ -10,7 +10,7 @@
         <form method="post" class="row g-3">
           <div class="col-12 col-md-6">
             <label class="form-label">Available Slots</label>
-            <input class="form-control" type="number" name="available_slots" min="0" max="{{ trek.total_slots }}" value="{{ trek.available_slots }}">
+            <input class="form-control" type="number" name="available_slots" min="0" max="{{ trek.total_slots }}" step="1" value="{{ trek.available_slots }}" required>
           </div>
           <div class="col-12 col-md-6">
             <label class="form-label">Status</label>

@@ -124,6 +124,82 @@ def parse_date(value):
     return datetime.strptime(value, "%Y-%m-%d").date()
 
 
+def parse_int_field(value, field_name, minimum=None, maximum=None):
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return None, f"{field_name} must be a number."
+
+    if minimum is not None and number < minimum:
+        return None, f"{field_name} must be at least {minimum}."
+    if maximum is not None and number > maximum:
+        return None, f"{field_name} must be at most {maximum}."
+    return number, None
+
+
+def validate_trek_payload(form_data, existing_total_slots=None):
+    trek_name = form_data.get("trek_name", "").strip()
+    location = form_data.get("location", "").strip()
+    difficulty = form_data.get("difficulty", "Easy").strip()
+    status = form_data.get("status", "Pending").strip()
+    description = form_data.get("description", "").strip()
+    start_date = parse_date(form_data.get("start_date"))
+    end_date = parse_date(form_data.get("end_date"))
+
+    if not trek_name or not location:
+        return None, "Trek name and location are required."
+
+    duration_days, error = parse_int_field(form_data.get("duration_days"), "Duration days", minimum=1)
+    if error:
+        return None, error
+
+    total_slots, error = parse_int_field(form_data.get("total_slots"), "Total slots", minimum=1)
+    if error:
+        return None, error
+
+    available_slots, error = parse_int_field(form_data.get("available_slots", total_slots), "Available slots", minimum=0, maximum=total_slots)
+    if error:
+        return None, error
+
+    if start_date and end_date and end_date < start_date:
+        return None, "End date must be on or after the start date."
+
+    allowed_difficulties = {"Easy", "Moderate", "Hard"}
+    allowed_statuses = {"Pending", "Approved", "Open", "Closed", "Ongoing", "Completed"}
+    if difficulty not in allowed_difficulties:
+        return None, "Invalid difficulty level."
+    if status not in allowed_statuses:
+        return None, "Invalid trek status."
+
+    assigned_staff_id = form_data.get("assigned_staff_id")
+    if assigned_staff_id:
+        staff_id, error = parse_int_field(assigned_staff_id, "Assigned staff ID", minimum=1)
+        if error:
+            return None, error
+        staff_member = User.query.get(staff_id)
+        if not staff_member or staff_member.role != "staff" or not staff_member.is_approved or staff_member.status != "active":
+            return None, "Assigned staff must be an approved active staff member."
+    else:
+        staff_id = None
+
+    if available_slots > total_slots:
+        return None, "Available slots cannot exceed total slots."
+
+    return {
+        "trek_name": trek_name,
+        "location": location,
+        "difficulty": difficulty,
+        "duration_days": duration_days,
+        "total_slots": total_slots,
+        "available_slots": available_slots,
+        "description": description,
+        "start_date": start_date,
+        "end_date": end_date,
+        "status": status,
+        "assigned_staff_id": staff_id,
+    }, None
+
+
 def trek_participant_count(trek_id):
     return db.session.query(func.count(Booking.id)).filter(
         Booking.trek_id == trek_id,
@@ -196,8 +272,6 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for("dashboard"))
 
-    if request.method == "POST":
-        identifier = request.form.get("identifier", request.form.get("email", "")).strip().lower()
         password = request.form.get("password", "")
 
         if identifier == ADMIN_ID and password == ADMIN_PASSWORD:
@@ -206,6 +280,8 @@ def login():
             return redirect(url_for("dashboard"))
 
         user = User.query.filter(func.lower(User.email) == identifier).first()
+        if request.form.get("password"):
+            current_user.set_password(request.form.get("password"))
 
         if not user or not user.check_password(password):
             flash("Invalid email or password.", "danger")
@@ -240,8 +316,14 @@ def register(role):
         phone = request.form.get("phone", "").strip()
         password = request.form.get("password", "")
 
-        if not name or not email or not password:
-            flash("Name, email, and password are required.", "danger")
+        if len(name) < 2:
+            flash("Name must be at least 2 characters long.", "danger")
+            return render_template("register.html", role=role)
+        if not email or "@" not in email:
+            flash("Enter a valid email address.", "danger")
+            return render_template("register.html", role=role)
+        if len(password) < 6:
+            flash("Password must be at least 6 characters long.", "danger")
             return render_template("register.html", role=role)
 
         existing = User.query.filter(func.lower(User.email) == email).first()
@@ -314,21 +396,12 @@ def admin_dashboard():
 @role_required("admin")
 def admin_treks():
     if request.method == "POST":
-        trek = Trek(
-            trek_name=request.form.get("trek_name", "").strip(),
-            location=request.form.get("location", "").strip(),
-            difficulty=request.form.get("difficulty", "Easy"),
-            duration_days=int(request.form.get("duration_days", 1)),
-            total_slots=int(request.form.get("total_slots", 1)),
-            available_slots=int(request.form.get("available_slots", request.form.get("total_slots", 1))),
-            description=request.form.get("description", "").strip(),
-            start_date=parse_date(request.form.get("start_date")),
-            end_date=parse_date(request.form.get("end_date")),
-            status=request.form.get("status", "Pending"),
-            assigned_staff_id=int(request.form.get("assigned_staff_id")) if request.form.get("assigned_staff_id") else None,
-        )
-        if trek.available_slots > trek.total_slots:
-            trek.available_slots = trek.total_slots
+        trek_data, error = validate_trek_payload(request.form)
+        if error:
+            flash(error, "danger")
+            return render_template("admin_treks.html", treks=Trek.query.order_by(Trek.created_at.desc()).all(), staff_members=User.query.filter_by(role="staff", is_approved=True, status="active").order_by(User.name.asc()).all())
+
+        trek = Trek(**trek_data)
         db.session.add(trek)
         db.session.commit()
         flash("Trek created successfully.", "success")
@@ -346,17 +419,22 @@ def admin_edit_trek(trek_id):
     staff_members = User.query.filter_by(role="staff", is_approved=True, status="active").order_by(User.name.asc()).all()
 
     if request.method == "POST":
-        trek.trek_name = request.form.get("trek_name", "").strip()
-        trek.location = request.form.get("location", "").strip()
-        trek.difficulty = request.form.get("difficulty", "Easy")
-        trek.duration_days = int(request.form.get("duration_days", 1))
-        trek.total_slots = int(request.form.get("total_slots", 1))
-        trek.available_slots = min(int(request.form.get("available_slots", 1)), trek.total_slots)
-        trek.description = request.form.get("description", "").strip()
-        trek.start_date = parse_date(request.form.get("start_date"))
-        trek.end_date = parse_date(request.form.get("end_date"))
-        trek.status = request.form.get("status", trek.status)
-        trek.assigned_staff_id = int(request.form.get("assigned_staff_id")) if request.form.get("assigned_staff_id") else None
+        trek_data, error = validate_trek_payload(request.form, existing_total_slots=trek.total_slots)
+        if error:
+            flash(error, "danger")
+            return render_template("trek_form.html", trek=trek, staff_members=staff_members, mode="admin")
+
+        trek.trek_name = trek_data["trek_name"]
+        trek.location = trek_data["location"]
+        trek.difficulty = trek_data["difficulty"]
+        trek.duration_days = trek_data["duration_days"]
+        trek.total_slots = trek_data["total_slots"]
+        trek.available_slots = trek_data["available_slots"]
+        trek.description = trek_data["description"]
+        trek.start_date = trek_data["start_date"]
+        trek.end_date = trek_data["end_date"]
+        trek.status = trek_data["status"]
+        trek.assigned_staff_id = trek_data["assigned_staff_id"]
         db.session.commit()
         flash("Trek updated successfully.", "success")
         return redirect(url_for("admin_treks"))
@@ -487,8 +565,18 @@ def staff_manage_trek(trek_id):
         abort(403)
 
     if request.method == "POST":
-        trek.available_slots = min(int(request.form.get("available_slots", trek.available_slots)), trek.total_slots)
-        trek.status = request.form.get("status", trek.status)
+        available_slots, error = parse_int_field(request.form.get("available_slots", trek.available_slots), "Available slots", minimum=0, maximum=trek.total_slots)
+        if error:
+            flash(error, "danger")
+            return render_template("staff_manage_trek.html", trek=trek, participants=Booking.query.filter_by(trek_id=trek.id).order_by(Booking.booking_date.desc()).all())
+
+        status = request.form.get("status", trek.status)
+        if status not in {"Approved", "Open", "Closed", "Ongoing", "Completed"}:
+            flash("Invalid trek status.", "danger")
+            return render_template("staff_manage_trek.html", trek=trek, participants=Booking.query.filter_by(trek_id=trek.id).order_by(Booking.booking_date.desc()).all())
+
+        trek.available_slots = available_slots
+        trek.status = status
         if trek.status == "Completed":
             for booking in trek.bookings:
                 if booking.status == "Booked":
@@ -624,9 +712,15 @@ def api_trek_detail(trek_id):
 
     if request.method == "GET":
         return jsonify(trek_to_dict(trek))
-
+        phone = request.form.get("phone", "").strip()
     auth_error = api_auth_required("admin", "staff")
     if auth_error:
+        if len(name) < 2:
+            flash("Name must be at least 2 characters long.", "danger")
+            return render_template("profile.html")
+        if phone and len(phone) < 7:
+            flash("Phone number looks too short.", "danger")
+            return render_template("profile.html")
         return auth_error
     if current_user.role == "staff" and trek.assigned_staff_id != current_user.id:
         return api_error("You can only update your assigned trek.", 403)

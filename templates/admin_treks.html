@@ -7,17 +7,17 @@
       <div class="card-body">
         <h4 class="fw-bold">Create Trek</h4>
         <form method="post" class="row g-3">
-          <div class="col-12"><label class="form-label">Trek Name</label><input class="form-control" name="trek_name" required></div>
-          <div class="col-12"><label class="form-label">Location</label><input class="form-control" name="location" required></div>
+          <div class="col-12"><label class="form-label">Trek Name</label><input class="form-control" name="trek_name" minlength="2" maxlength="150" required></div>
+          <div class="col-12"><label class="form-label">Location</label><input class="form-control" name="location" minlength="2" maxlength="150" required></div>
           <div class="col-12"><label class="form-label">Difficulty</label><select class="form-select" name="difficulty"><option>Easy</option><option>Moderate</option><option>Hard</option></select></div>
-          <div class="col-6"><label class="form-label">Duration Days</label><input class="form-control" type="number" name="duration_days" min="1" value="1"></div>
-          <div class="col-6"><label class="form-label">Total Slots</label><input class="form-control" type="number" name="total_slots" min="1" value="1"></div>
-          <div class="col-6"><label class="form-label">Available Slots</label><input class="form-control" type="number" name="available_slots" min="0" value="1"></div>
+          <div class="col-6"><label class="form-label">Duration Days</label><input class="form-control" type="number" name="duration_days" min="1" step="1" value="1" required></div>
+          <div class="col-6"><label class="form-label">Total Slots</label><input class="form-control" type="number" name="total_slots" min="1" step="1" value="1" required></div>
+          <div class="col-6"><label class="form-label">Available Slots</label><input class="form-control" type="number" name="available_slots" min="0" step="1" value="1" required></div>
           <div class="col-6"><label class="form-label">Status</label><select class="form-select" name="status"><option>Pending</option><option>Approved</option><option>Open</option><option>Closed</option><option>Completed</option></select></div>
           <div class="col-12"><label class="form-label">Assigned Staff</label><select class="form-select" name="assigned_staff_id"><option value="">None</option>{% for staff in staff_members %}<option value="{{ staff.id }}">{{ staff.name }} ({{ staff.id }})</option>{% endfor %}</select></div>
           <div class="col-6"><label class="form-label">Start Date</label><input class="form-control" type="date" name="start_date"></div>
           <div class="col-6"><label class="form-label">End Date</label><input class="form-control" type="date" name="end_date"></div>
-          <div class="col-12"><label class="form-label">Description</label><textarea class="form-control" name="description" rows="3"></textarea></div>
+          <div class="col-12"><label class="form-label">Description</label><textarea class="form-control" name="description" rows="3" maxlength="1000"></textarea></div>
           <div class="col-12 d-grid"><button class="btn btn-primary" type="submit">Create Trek</button></div>
         </form>
       </div>
