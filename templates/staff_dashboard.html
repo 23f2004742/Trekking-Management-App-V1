@@ -8,6 +8,27 @@
   </div>
 </div>
 
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="stat-card p-4 h-100">
+      <div class="text-uppercase small text-secondary">Assigned Treks</div>
+      <div class="display-6 fw-bold">{{ assigned_treks|length }}</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card p-4 h-100">
+      <div class="text-uppercase small text-secondary">Registered Trekkers</div>
+      <div class="display-6 fw-bold">{{ trek_counts.values() | sum }}</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card p-4 h-100">
+      <div class="text-uppercase small text-secondary">Actions</div>
+      <div class="fw-semibold">Update slots, status, and participants for assigned treks.</div>
+    </div>
+  </div>
+</div>
+
 <div class="row g-4">
   {% for trek in assigned_treks %}
     <div class="col-12">
@@ -17,7 +38,8 @@
             <div>
               <h5 class="fw-bold mb-1">{{ trek.trek_name }}</h5>
               <div class="text-secondary">{{ trek.location }} • {{ trek.difficulty }} • {{ trek.duration_days }} days</div>
-              <div class="small text-secondary">Slots: {{ trek.available_slots }}/{{ trek.total_slots }} • Status: {{ trek.status }} • Participants: {{ trek_counts[trek.id] }}</div>
+              <div class="small text-secondary">Slots: {{ trek.available_slots }}/{{ trek.total_slots }} • Participants: {{ trek_counts[trek.id] }}</div>
+              <span class="badge text-bg-{% if trek.status == 'Open' %}success{% elif trek.status == 'Closed' %}secondary{% elif trek.status == 'Ongoing' %}warning{% elif trek.status == 'Completed' %}dark{% else %}info{% endif %}">{{ trek.status }}</span>
             </div>
             <div class="d-flex gap-2 flex-wrap align-items-start">
               <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('staff_participants', trek_id=trek.id) }}">Participants</a>
