@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 {% block title %}History | Trekking Management{% endblock %}
 {% block content %}
+{% set history_labels = history_chart_labels if history_chart_labels else ['No records'] %}
+{% set history_values = history_chart_values if history_chart_values else [1] %}
 <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
   <div>
     <h2 class="fw-bold mb-1">Trekking History</h2>
@@ -29,6 +31,18 @@
   </div>
 </div>
 
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+      <h5 class="fw-bold mb-0">Booking Status Distribution</h5>
+      <span class="text-secondary small">Your historical bookings grouped by status.</span>
+    </div>
+    <div style="height: 280px;">
+      <canvas id="historyStatusChart"></canvas>
+    </div>
+  </div>
+</div>
+
 <div class="card shadow-sm border-0">
   <div class="card-body">
     {% if bookings %}
@@ -53,4 +67,29 @@
     {% endif %}
   </div>
 </div>
+
+{% block page_scripts %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    const historyStatusCtx = document.getElementById('historyStatusChart');
+    new Chart(historyStatusCtx, {
+      type: 'doughnut',
+      data: {
+        labels: {{ history_labels | tojson }},
+        datasets: [{
+          data: {{ history_values | tojson }},
+          backgroundColor: ['#2563eb', '#059669', '#6b7280', '#d97706'],
+          borderWidth: 0,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom' }
+        }
+      }
+    });
+  </script>
+{% endblock %}
 {% endblock %}

@@ -29,6 +29,18 @@
   </div>
 </div>
 
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+      <h5 class="fw-bold mb-0">Participant Count per Trek</h5>
+      <span class="text-secondary small">Counts only booked participants for assigned treks.</span>
+    </div>
+    <div style="height: 280px;">
+      <canvas id="staffParticipantsChart"></canvas>
+    </div>
+  </div>
+</div>
+
 <div class="row g-4">
   {% for trek in assigned_treks %}
     <div class="col-12">
@@ -55,4 +67,33 @@
     </div>
   {% endfor %}
 </div>
+
+{% block page_scripts %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    const staffParticipantsCtx = document.getElementById('staffParticipantsChart');
+    new Chart(staffParticipantsCtx, {
+      type: 'bar',
+      data: {
+        labels: {{ staff_chart_labels | tojson }},
+        datasets: [{
+          label: 'Participants',
+          data: {{ staff_chart_values | tojson }},
+          backgroundColor: '#2563eb',
+          borderRadius: 8,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          y: { beginAtZero: true, ticks: { precision: 0 } }
+        }
+      }
+    });
+  </script>
+{% endblock %}
 {% endblock %}

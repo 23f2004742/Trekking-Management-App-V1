@@ -1,4 +1,5 @@
 from functools import wraps
+from collections import Counter
 from datetime import datetime, date
 
 from flask import Flask, abort, flash, g, jsonify, redirect, render_template, request, session, url_for
@@ -293,6 +294,7 @@ def admin_dashboard():
     trek_count = Trek.query.count()
     user_count = User.query.filter_by(role="user").count()
     staff_count = User.query.filter_by(role="staff").count()
+    active_user_count = User.query.filter_by(role="user", status="active").count()
     booking_count = Booking.query.count()
     pending_staff = User.query.filter_by(role="staff", is_approved=False).order_by(User.created_at.desc()).all()
     recent_bookings = Booking.query.order_by(Booking.booking_date.desc()).limit(5).all()
@@ -301,6 +303,7 @@ def admin_dashboard():
         trek_count=trek_count,
         user_count=user_count,
         staff_count=staff_count,
+        active_user_count=active_user_count,
         booking_count=booking_count,
         pending_staff=pending_staff,
         recent_bookings=recent_bookings,
@@ -467,7 +470,13 @@ def admin_search():
 def staff_dashboard():
     assigned_treks = Trek.query.filter_by(assigned_staff_id=current_user.id).order_by(Trek.start_date.asc().nullslast()).all()
     trek_counts = {trek.id: trek_participant_count(trek.id) for trek in assigned_treks}
-    return render_template("staff_dashboard.html", assigned_treks=assigned_treks, trek_counts=trek_counts)
+    return render_template(
+        "staff_dashboard.html",
+        assigned_treks=assigned_treks,
+        trek_counts=trek_counts,
+        staff_chart_labels=[trek.trek_name for trek in assigned_treks],
+        staff_chart_values=[trek_counts[trek.id] for trek in assigned_treks],
+    )
 
 
 @app.route("/staff/trek/<int:trek_id>/manage", methods=["GET", "POST"])
@@ -594,7 +603,13 @@ def profile():
 @role_required("user")
 def history():
     bookings = Booking.query.filter_by(user_id=current_user.id).order_by(Booking.booking_date.desc()).all()
-    return render_template("history.html", bookings=bookings)
+    status_summary = Counter(booking.status for booking in bookings)
+    return render_template(
+        "history.html",
+        bookings=bookings,
+        history_chart_labels=list(status_summary.keys()),
+        history_chart_values=list(status_summary.values()),
+    )
 
 
 @app.route("/api/treks", methods=["GET"])
