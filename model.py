@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -7,7 +8,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 db = SQLAlchemy()
 
 
-class User(db.Model):
+class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
@@ -25,10 +26,6 @@ class User(db.Model):
         foreign_keys="Trek.assigned_staff_id",
     )
     bookings = db.relationship("Booking", backref="user", lazy=True)
-
-    @property
-    def is_authenticated(self):
-        return True
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)

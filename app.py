@@ -2,9 +2,9 @@ from functools import wraps
 from collections import Counter
 from datetime import datetime, date
 
-from flask import Flask, abort, flash, g, jsonify, redirect, render_template, request, session, url_for
+from flask import Flask, abort, flash, jsonify, redirect, render_template, request, url_for
+from flask_login import AnonymousUserMixin, LoginManager, UserMixin, current_user, login_user as flask_login_login_user, logout_user as flask_login_logout_user
 from sqlalchemy import String, cast, func, or_
-from werkzeug.local import LocalProxy
 
 from model import Booking, Trek, User, db
 
@@ -12,14 +12,19 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = "trekking-management-secret-key"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///trekking.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 db.init_app(app)
+
+login_manager = LoginManager(app)
+login_manager.login_view = "login"
+login_manager.session_protection = "strong"
 
 ADMIN_ID = "admin"
 ADMIN_PASSWORD = "admin123"
 
 
-class AnonymousUser:
-    is_authenticated = False
+class AnonymousUser(AnonymousUserMixin):
     is_approved = False
     role = None
     status = "active"
@@ -29,8 +34,7 @@ class AnonymousUser:
     phone = ""
 
 
-class AdminUser:
-    is_authenticated = True
+class AdminUser(UserMixin):
     is_approved = True
     role = "admin"
     status = "active"
@@ -40,47 +44,11 @@ class AdminUser:
     phone = ""
 
 
-def _get_current_user():
-    return getattr(g, "current_user", AnonymousUser())
-
-
-current_user = LocalProxy(_get_current_user)
-
-
-def login_user(user):
-    if getattr(user, "role", None) == "admin":
-        session["auth_role"] = "admin"
-        session["user_id"] = ADMIN_ID
-        return
-
-    session["auth_role"] = user.role
-    session["user_id"] = user.id
-
-
-def logout_user():
-    session.pop("user_id", None)
-    session.pop("auth_role", None)
-
-
-@app.before_request
-def load_current_user():
-    if session.get("auth_role") == "admin":
-        g.current_user = AdminUser()
-        return
-
-    user_id = session.get("user_id")
-    if not user_id:
-        g.current_user = AnonymousUser()
-        return
-
-    user = db.session.get(User, int(user_id))
-    if not user:
-        session.pop("user_id", None)
-        session.pop("auth_role", None)
-        g.current_user = AnonymousUser()
-        return
-
-    g.current_user = user
+@login_manager.user_loader
+def load_user(user_id):
+    if user_id == ADMIN_ID:
+        return AdminUser()
+    return db.session.get(User, int(user_id))
 
 
 def role_required(*roles):
@@ -91,11 +59,11 @@ def role_required(*roles):
                 flash("Please log in to continue.", "warning")
                 return redirect(url_for("login"))
             if current_user.status == "blacklisted":
-                logout_user()
+                flask_login_logout_user()
                 flash("Your account has been blacklisted.", "danger")
                 return redirect(url_for("login"))
             if current_user.role == "staff" and not current_user.is_approved:
-                logout_user()
+                flask_login_logout_user()
                 flash("Your staff account is waiting for admin approval.", "warning")
                 return redirect(url_for("login"))
             if current_user.role not in roles:
@@ -275,7 +243,7 @@ def login():
         password = request.form.get("password", "")
 
         if identifier == ADMIN_ID and password == ADMIN_PASSWORD:
-            login_user(AdminUser())
+            flask_login_login_user(AdminUser())
             flash("Logged in successfully.", "success")
             return redirect(url_for("dashboard"))
 
@@ -295,7 +263,7 @@ def login():
             flash("Your staff account is awaiting admin approval.", "warning")
             return render_template("login.html")
 
-        login_user(user)
+        flask_login_login_user(user)
         flash("Logged in successfully.", "success")
         return redirect(url_for("dashboard"))
 
@@ -355,7 +323,7 @@ def register(role):
 @app.route("/logout")
 @login_required
 def logout():
-    logout_user()
+    flask_login_logout_user()
     flash("You have been logged out.", "info")
     return redirect(url_for("login"))
 
