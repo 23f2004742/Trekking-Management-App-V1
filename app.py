@@ -1,7 +1,7 @@
 from functools import wraps
 from datetime import datetime, date
 
-from flask import Flask, abort, flash, g, redirect, render_template, request, session, url_for
+from flask import Flask, abort, flash, g, jsonify, redirect, render_template, request, session, url_for
 from sqlalchemy import String, cast, func, or_
 from werkzeug.local import LocalProxy
 
@@ -128,6 +128,51 @@ def trek_participant_count(trek_id):
         Booking.trek_id == trek_id,
         Booking.status == "Booked",
     ).scalar() or 0
+
+
+def trek_to_dict(trek):
+    return {
+        "id": trek.id,
+        "trek_name": trek.trek_name,
+        "location": trek.location,
+        "difficulty": trek.difficulty,
+        "duration_days": trek.duration_days,
+        "total_slots": trek.total_slots,
+        "available_slots": trek.available_slots,
+        "status": trek.status,
+        "assigned_staff": trek.assigned_staff.name if trek.assigned_staff else None,
+        "participant_count": trek_participant_count(trek.id),
+        "start_date": trek.start_date.isoformat() if trek.start_date else None,
+        "end_date": trek.end_date.isoformat() if trek.end_date else None,
+    }
+
+
+def booking_to_dict(booking):
+    return {
+        "id": booking.id,
+        "user_id": booking.user_id,
+        "user_name": booking.user.name,
+        "trek_id": booking.trek_id,
+        "trek_name": booking.trek.trek_name,
+        "status": booking.status,
+        "booking_date": booking.booking_date.isoformat(),
+    }
+
+
+def api_error(message, status_code):
+    return jsonify({"error": message}), status_code
+
+
+def api_auth_required(*roles):
+    if not current_user.is_authenticated:
+        return api_error("Authentication required.", 401)
+    if current_user.status == "blacklisted":
+        return api_error("This account is blacklisted.", 403)
+    if current_user.role == "staff" and not current_user.is_approved:
+        return api_error("Staff account is awaiting admin approval.", 403)
+    if roles and current_user.role not in roles:
+        return api_error("Forbidden.", 403)
+    return None
 
 
 @app.context_processor
@@ -550,6 +595,120 @@ def profile():
 def history():
     bookings = Booking.query.filter_by(user_id=current_user.id).order_by(Booking.booking_date.desc()).all()
     return render_template("history.html", bookings=bookings)
+
+
+@app.route("/api/treks", methods=["GET"])
+def api_treks():
+    treks = Trek.query.order_by(Trek.id.asc()).all()
+    return jsonify([trek_to_dict(trek) for trek in treks])
+
+
+@app.route("/api/treks/<int:trek_id>", methods=["GET", "PUT"])
+def api_trek_detail(trek_id):
+    trek = Trek.query.get_or_404(trek_id)
+
+    if request.method == "GET":
+        return jsonify(trek_to_dict(trek))
+
+    auth_error = api_auth_required("admin", "staff")
+    if auth_error:
+        return auth_error
+    if current_user.role == "staff" and trek.assigned_staff_id != current_user.id:
+        return api_error("You can only update your assigned trek.", 403)
+
+    payload = request.get_json(silent=True) or {}
+    allowed_statuses = {"Pending", "Approved", "Open", "Closed", "Ongoing", "Completed"}
+
+    if "available_slots" in payload:
+        try:
+            available_slots = int(payload["available_slots"])
+        except (TypeError, ValueError):
+            return api_error("available_slots must be an integer.", 400)
+        if available_slots < 0 or available_slots > trek.total_slots:
+            return api_error("available_slots must be between 0 and total_slots.", 400)
+        trek.available_slots = available_slots
+
+    if "status" in payload:
+        status = str(payload["status"]).strip()
+        if status not in allowed_statuses:
+            return api_error("Invalid trek status.", 400)
+        trek.status = status
+        if status == "Completed":
+            for booking in trek.bookings:
+                if booking.status == "Booked":
+                    booking.status = "Completed"
+
+    db.session.commit()
+    return jsonify(trek_to_dict(trek))
+
+
+@app.route("/api/bookings", methods=["GET", "POST"])
+def api_bookings():
+    auth_error = api_auth_required("admin", "staff", "user")
+    if auth_error:
+        return auth_error
+
+    if request.method == "GET":
+        if current_user.role == "admin":
+            bookings = Booking.query.order_by(Booking.booking_date.desc()).all()
+        elif current_user.role == "staff":
+            assigned_trek_ids = [trek.id for trek in Trek.query.filter_by(assigned_staff_id=current_user.id).all()]
+            bookings = Booking.query.filter(Booking.trek_id.in_(assigned_trek_ids)).order_by(Booking.booking_date.desc()).all()
+        else:
+            bookings = Booking.query.filter_by(user_id=current_user.id).order_by(Booking.booking_date.desc()).all()
+        return jsonify([booking_to_dict(booking) for booking in bookings])
+
+    if current_user.role != "user":
+        return api_error("Only trekkers can create bookings through the API.", 403)
+
+    payload = request.get_json(silent=True) or {}
+    trek_id = payload.get("trek_id")
+    if trek_id is None:
+        return api_error("trek_id is required.", 400)
+
+    trek = Trek.query.get(trek_id)
+    if not trek:
+        return api_error("Trek not found.", 404)
+    if trek.status != "Open":
+        return api_error("This trek is not open for booking.", 400)
+    if trek.available_slots <= 0:
+        return api_error("No slots are available for this trek.", 400)
+
+    existing = Booking.query.filter_by(user_id=current_user.id, trek_id=trek.id).first()
+    if existing and existing.status in {"Booked", "Completed"}:
+        return api_error("You already have a booking for this trek.", 400)
+    if existing and existing.status in {"Completed", "Cancelled"}:
+        return api_error("A history entry already exists for this trek.", 400)
+
+    booking = Booking(user_id=current_user.id, trek_id=trek.id, status="Booked")
+    trek.available_slots -= 1
+    db.session.add(booking)
+    db.session.commit()
+    return jsonify(booking_to_dict(booking)), 201
+
+
+@app.route("/api/bookings/<int:booking_id>", methods=["GET", "DELETE"])
+def api_booking_detail(booking_id):
+    booking = Booking.query.get_or_404(booking_id)
+    auth_error = api_auth_required("admin", "staff", "user")
+    if auth_error:
+        return auth_error
+
+    if current_user.role == "staff" and booking.trek.assigned_staff_id != current_user.id:
+        return api_error("You can only access bookings for your assigned treks.", 403)
+    if current_user.role == "user" and booking.user_id != current_user.id:
+        return api_error("You can only access your own bookings.", 403)
+
+    if request.method == "GET":
+        return jsonify(booking_to_dict(booking))
+
+    if booking.status != "Booked":
+        return api_error("Only active bookings can be cancelled.", 400)
+
+    booking.status = "Cancelled"
+    booking.trek.available_slots += 1
+    db.session.commit()
+    return jsonify(booking_to_dict(booking))
 
 
 @app.route("/initialize")
