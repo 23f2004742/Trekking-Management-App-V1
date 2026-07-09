@@ -21,6 +21,24 @@
         <label class="form-label">New Password</label>
         <input class="form-control" type="password" name="password" minlength="6" placeholder="Leave blank to keep current password">
       </div>
+      {% if current_user.role == 'staff' %}
+        <div class="col-12 col-md-6">
+          <label class="form-label">Experience Years</label>
+          <input class="form-control" type="number" name="experience_years" min="0" max="60" step="1" value="{{ current_user.staff_profile.experience_years if current_user.staff_profile else 0 }}">
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label">Emergency Contact</label>
+          <input class="form-control" name="emergency_contact" value="{{ current_user.staff_profile.emergency_contact if current_user.staff_profile else '' }}" minlength="7" maxlength="30" pattern="[0-9+\-\s()]{7,30}">
+        </div>
+        <div class="col-12">
+          <label class="form-label">Specialization</label>
+          <input class="form-control" name="specialization" maxlength="150" value="{{ current_user.staff_profile.specialization if current_user.staff_profile else '' }}">
+        </div>
+        <div class="col-12">
+          <label class="form-label">Bio</label>
+          <textarea class="form-control" name="bio" rows="4">{{ current_user.staff_profile.bio if current_user.staff_profile else '' }}</textarea>
+        </div>
+      {% endif %}
       <div class="col-12 d-grid d-md-flex gap-2">
         <button class="btn btn-primary" type="submit">Save Profile</button>
         <a class="btn btn-outline-secondary" href="{{ url_for('dashboard') }}">Back</a>

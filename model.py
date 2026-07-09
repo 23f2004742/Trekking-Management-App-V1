@@ -26,6 +26,13 @@ class User(UserMixin, db.Model):
         foreign_keys="Trek.assigned_staff_id",
     )
     bookings = db.relationship("Booking", backref="user", lazy=True)
+    staff_profile = db.relationship(
+        "StaffProfile",
+        backref="user",
+        lazy=True,
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -58,6 +65,18 @@ class Booking(db.Model):
     trek_id = db.Column(db.Integer, db.ForeignKey("trek.id"), nullable=False)
     booking_date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     status = db.Column(db.String(20), nullable=False, default="Booked")
+    payment_status = db.Column(db.String(20), nullable=False, default="Pending")
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     __table_args__ = (db.UniqueConstraint("user_id", "trek_id", name="uq_user_trek_booking"),)
+
+
+class StaffProfile(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), unique=True, nullable=False)
+    experience_years = db.Column(db.Integer, nullable=False, default=0)
+    specialization = db.Column(db.String(150), nullable=True)
+    emergency_contact = db.Column(db.String(30), nullable=True)
+    bio = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

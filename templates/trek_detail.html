@@ -6,7 +6,7 @@
     <div class="d-flex justify-content-between flex-wrap gap-3 mb-3">
       <div>
         <h2 class="fw-bold mb-1">{{ trek.trek_name }}</h2>
-        <p class="text-secondary mb-0">{{ trek.location }} • {{ trek.difficulty }} • {{ trek.duration_days }} days</p>
+        <p class="text-secondary mb-0">{{ trek.location }} - {{ trek.difficulty }} - {{ trek.duration_days }} days</p>
       </div>
       <span class="badge text-bg-primary align-self-start">{{ trek.status }}</span>
     </div>
@@ -18,9 +18,11 @@
     <p>{{ trek.description or 'No description available.' }}</p>
     {% if current_user.role == 'user' %}
       <div class="d-flex gap-2 flex-wrap">
-        <form method="post" action="{{ url_for('book_trek', trek_id=trek.id) }}">
-          <button class="btn btn-primary" type="submit">Book Trek</button>
-        </form>
+        {% if not booking %}
+          <form method="post" action="{{ url_for('book_trek', trek_id=trek.id) }}">
+            <button class="btn btn-primary" type="submit" {% if trek.status != 'Open' or trek.available_slots <= 0 %}disabled{% endif %}>Book Trek</button>
+          </form>
+        {% endif %}
         {% if booking and booking.status == 'Booked' %}
           <form method="post" action="{{ url_for('cancel_booking', booking_id=booking.id) }}">
             <button class="btn btn-outline-danger" type="submit">Cancel Booking</button>

@@ -48,7 +48,7 @@
     {% if bookings %}
       <div class="table-responsive">
         <table class="table align-middle">
-          <thead><tr><th>ID</th><th>Trek</th><th>Booked On</th><th>Status</th><th>Completion</th></tr></thead>
+          <thead><tr><th>ID</th><th>Trek</th><th>Booked On</th><th>Status</th><th>Payment</th><th>Completion</th></tr></thead>
           <tbody>
             {% for booking in bookings %}
               <tr>
@@ -56,6 +56,7 @@
                 <td>{{ booking.trek.trek_name }}</td>
                 <td>{{ booking.booking_date.strftime('%d %b %Y') }}</td>
                 <td><span class="badge text-bg-{% if booking.status == 'Booked' %}primary{% elif booking.status == 'Completed' %}success{% else %}secondary{% endif %}">{{ booking.status }}</span></td>
+                <td>{{ booking.payment_status }}</td>
                 <td>{{ booking.trek.status }}</td>
               </tr>
             {% endfor %}
@@ -67,9 +68,9 @@
     {% endif %}
   </div>
 </div>
+{% endblock %}
 
 {% block page_scripts %}
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script>
     const historyStatusCtx = document.getElementById('historyStatusChart');
     new Chart(historyStatusCtx, {
@@ -91,5 +92,4 @@
       }
     });
   </script>
-{% endblock %}
 {% endblock %}

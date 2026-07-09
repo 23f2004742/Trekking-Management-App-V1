@@ -3,10 +3,10 @@ from collections import Counter
 from datetime import datetime, date
 
 from flask import Flask, abort, flash, jsonify, redirect, render_template, request, url_for
-from flask_login import AnonymousUserMixin, LoginManager, UserMixin, current_user, login_user as flask_login_login_user, logout_user as flask_login_logout_user
-from sqlalchemy import String, cast, func, or_
+from flask_login import AnonymousUserMixin, LoginManager, current_user, login_user as flask_login_login_user, logout_user as flask_login_logout_user
+from sqlalchemy import String, cast, func, inspect, or_, text
 
-from model import Booking, Trek, User, db
+from model import Booking, StaffProfile, Trek, User, db
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "trekking-management-secret-key"
@@ -34,21 +34,55 @@ class AnonymousUser(AnonymousUserMixin):
     phone = ""
 
 
-class AdminUser(UserMixin):
-    is_approved = True
-    role = "admin"
-    status = "active"
-    id = ADMIN_ID
-    name = "Admin"
-    email = "admin@local"
-    phone = ""
-
-
 @login_manager.user_loader
 def load_user(user_id):
-    if user_id == ADMIN_ID:
-        return AdminUser()
-    return db.session.get(User, int(user_id))
+    try:
+        return db.session.get(User, int(user_id))
+    except (TypeError, ValueError):
+        return None
+
+
+login_manager.anonymous_user = AnonymousUser
+
+
+def ensure_schema_updates():
+    db.create_all()
+    inspector = inspect(db.engine)
+    booking_columns = {column["name"] for column in inspector.get_columns("booking")}
+    with db.engine.begin() as connection:
+        if "payment_status" not in booking_columns:
+            connection.execute(text("ALTER TABLE booking ADD COLUMN payment_status VARCHAR(20) NOT NULL DEFAULT 'Pending'"))
+
+
+def seed_admin_user():
+    admin = User.query.filter_by(role="admin").first()
+    if not admin:
+        admin = User(
+            name="Admin",
+            email="admin@local",
+            phone="",
+            role="admin",
+            status="active",
+            is_approved=True,
+        )
+        admin.set_password(ADMIN_PASSWORD)
+        db.session.add(admin)
+    else:
+        admin.name = admin.name or "Admin"
+        admin.email = admin.email or "admin@local"
+        admin.status = "active"
+        admin.is_approved = True
+        if not admin.password_hash:
+            admin.set_password(ADMIN_PASSWORD)
+    db.session.commit()
+
+
+def ensure_staff_profiles():
+    staff_without_profiles = User.query.filter_by(role="staff").all()
+    for staff in staff_without_profiles:
+        if not staff.staff_profile:
+            db.session.add(StaffProfile(user_id=staff.id))
+    db.session.commit()
 
 
 def role_required(*roles):
@@ -200,8 +234,30 @@ def booking_to_dict(booking):
         "trek_id": booking.trek_id,
         "trek_name": booking.trek.trek_name,
         "status": booking.status,
+        "payment_status": booking.payment_status,
         "booking_date": booking.booking_date.isoformat(),
     }
+
+
+def user_to_dict(user):
+    data = {
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
+        "phone": user.phone,
+        "role": user.role,
+        "status": user.status,
+        "is_approved": user.is_approved,
+        "created_at": user.created_at.isoformat(),
+    }
+    if user.role == "staff":
+        data["staff_profile"] = {
+            "experience_years": user.staff_profile.experience_years if user.staff_profile else 0,
+            "specialization": user.staff_profile.specialization if user.staff_profile else None,
+            "emergency_contact": user.staff_profile.emergency_contact if user.staff_profile else None,
+            "bio": user.staff_profile.bio if user.staff_profile else None,
+        }
+    return data
 
 
 def api_error(message, status_code):
@@ -240,16 +296,14 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for("dashboard"))
 
+    if request.method == "POST":
+        identifier = request.form.get("identifier", "").strip().lower()
         password = request.form.get("password", "")
 
-        if identifier == ADMIN_ID and password == ADMIN_PASSWORD:
-            flask_login_login_user(AdminUser())
-            flash("Logged in successfully.", "success")
-            return redirect(url_for("dashboard"))
-
-        user = User.query.filter(func.lower(User.email) == identifier).first()
-        if request.form.get("password"):
-            current_user.set_password(request.form.get("password"))
+        if identifier == ADMIN_ID:
+            user = User.query.filter_by(role="admin").first()
+        else:
+            user = User.query.filter(func.lower(User.email) == identifier).first()
 
         if not user or not user.check_password(password):
             flash("Invalid email or password.", "danger")
@@ -309,6 +363,9 @@ def register(role):
         )
         user.set_password(password)
         db.session.add(user)
+        if role == "staff":
+            db.session.flush()
+            db.session.add(StaffProfile(user_id=user.id))
         db.session.commit()
 
         flash(
@@ -617,7 +674,7 @@ def book_trek(trek_id):
         flash("A history entry already exists for this trek.", "warning")
         return redirect(url_for("user_dashboard"))
 
-    booking = Booking(user_id=current_user.id, trek_id=trek.id, status="Booked")
+    booking = Booking(user_id=current_user.id, trek_id=trek.id, status="Booked", payment_status="Pending")
     trek.available_slots -= 1
     db.session.add(booking)
     db.session.commit()
@@ -645,10 +702,39 @@ def cancel_booking(booking_id):
 @login_required
 def profile():
     if request.method == "POST":
-        current_user.name = request.form.get("name", current_user.name).strip()
-        current_user.phone = request.form.get("phone", current_user.phone)
-        if request.form.get("password"):
-            current_user.set_password(request.form.get("password"))
+        name = request.form.get("name", current_user.name).strip()
+        phone = request.form.get("phone", "").strip()
+        password = request.form.get("password", "")
+
+        if len(name) < 2:
+            flash("Name must be at least 2 characters long.", "danger")
+            return render_template("profile.html")
+        if phone and len(phone) < 7:
+            flash("Phone number looks too short.", "danger")
+            return render_template("profile.html")
+        if password and len(password) < 6:
+            flash("Password must be at least 6 characters long.", "danger")
+            return render_template("profile.html")
+
+        current_user.name = name
+        current_user.phone = phone
+        if password:
+            current_user.set_password(password)
+
+        if current_user.role == "staff":
+            profile_record = current_user.staff_profile
+            if not profile_record:
+                profile_record = StaffProfile(user_id=current_user.id)
+                db.session.add(profile_record)
+            experience_years, error = parse_int_field(request.form.get("experience_years", 0), "Experience years", minimum=0, maximum=60)
+            if error:
+                flash(error, "danger")
+                return render_template("profile.html")
+            profile_record.experience_years = experience_years
+            profile_record.specialization = request.form.get("specialization", "").strip()
+            profile_record.emergency_contact = request.form.get("emergency_contact", "").strip()
+            profile_record.bio = request.form.get("bio", "").strip()
+
         db.session.commit()
         flash("Profile updated successfully.", "success")
         return redirect(url_for("profile"))
@@ -680,15 +766,8 @@ def api_trek_detail(trek_id):
 
     if request.method == "GET":
         return jsonify(trek_to_dict(trek))
-        phone = request.form.get("phone", "").strip()
     auth_error = api_auth_required("admin", "staff")
     if auth_error:
-        if len(name) < 2:
-            flash("Name must be at least 2 characters long.", "danger")
-            return render_template("profile.html")
-        if phone and len(phone) < 7:
-            flash("Phone number looks too short.", "danger")
-            return render_template("profile.html")
         return auth_error
     if current_user.role == "staff" and trek.assigned_staff_id != current_user.id:
         return api_error("You can only update your assigned trek.", 403)
@@ -752,12 +831,12 @@ def api_bookings():
         return api_error("No slots are available for this trek.", 400)
 
     existing = Booking.query.filter_by(user_id=current_user.id, trek_id=trek.id).first()
-    if existing and existing.status in {"Booked", "Completed"}:
+    if existing and existing.status == "Booked":
         return api_error("You already have a booking for this trek.", 400)
     if existing and existing.status in {"Completed", "Cancelled"}:
         return api_error("A history entry already exists for this trek.", 400)
 
-    booking = Booking(user_id=current_user.id, trek_id=trek.id, status="Booked")
+    booking = Booking(user_id=current_user.id, trek_id=trek.id, status="Booked", payment_status="Pending")
     trek.available_slots -= 1
     db.session.add(booking)
     db.session.commit()
@@ -788,10 +867,45 @@ def api_booking_detail(booking_id):
     return jsonify(booking_to_dict(booking))
 
 
+@app.route("/api/users", methods=["GET"])
+def api_users():
+    auth_error = api_auth_required("admin")
+    if auth_error:
+        return auth_error
+    users = User.query.order_by(User.id.asc()).all()
+    return jsonify([user_to_dict(user) for user in users])
+
+
+@app.route("/api/users/<int:user_id>", methods=["GET", "PATCH"])
+def api_user_detail(user_id):
+    auth_error = api_auth_required("admin")
+    if auth_error:
+        return auth_error
+
+    user = User.query.get_or_404(user_id)
+    if request.method == "GET":
+        return jsonify(user_to_dict(user))
+
+    payload = request.get_json(silent=True) or {}
+    if "status" in payload:
+        status = str(payload["status"]).strip()
+        if status not in {"active", "pending", "blacklisted"}:
+            return api_error("Invalid user status.", 400)
+        user.status = status
+    if user.role == "staff" and "is_approved" in payload:
+        user.is_approved = bool(payload["is_approved"])
+        if user.is_approved and user.status == "pending":
+            user.status = "active"
+    db.session.commit()
+    return jsonify(user_to_dict(user))
+
+
 @app.route("/initialize")
 def initialize_database():
-    db.create_all()
-    flash("Database initialized.", "success")
+    ensure_schema_updates()
+    seed_admin_user()
+    ensure_staff_profiles()
+    flash("Database initialized and predefined admin user is ready.", "success")
     return redirect(url_for("login"))
 
 
@@ -806,7 +920,9 @@ def not_found(_):
 
 
 with app.app_context():
-    db.create_all()
+    ensure_schema_updates()
+    seed_admin_user()
+    ensure_staff_profiles()
 
 
 if __name__ == "__main__":

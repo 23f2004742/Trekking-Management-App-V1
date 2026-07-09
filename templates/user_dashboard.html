@@ -69,8 +69,8 @@
               <div class="d-flex justify-content-between flex-wrap gap-3">
                 <div>
                   <h5 class="fw-bold mb-1"><a href="{{ url_for('trek_detail', trek_id=trek.id) }}" class="text-decoration-none">{{ trek.trek_name }}</a></h5>
-                  <div class="text-secondary">{{ trek.location }} • {{ trek.difficulty }} • {{ trek.duration_days }} days</div>
-                  <div class="small text-secondary">Slots left: {{ trek.available_slots }} • Dates: {{ trek.start_date.strftime('%d %b %Y') if trek.start_date else 'TBA' }} - {{ trek.end_date.strftime('%d %b %Y') if trek.end_date else 'TBA' }}</div>
+                  <div class="text-secondary">{{ trek.location }} - {{ trek.difficulty }} - {{ trek.duration_days }} days</div>
+                  <div class="small text-secondary">Slots left: {{ trek.available_slots }} - Dates: {{ trek.start_date.strftime('%d %b %Y') if trek.start_date else 'TBA' }} - {{ trek.end_date.strftime('%d %b %Y') if trek.end_date else 'TBA' }}</div>
                 </div>
                 <form method="post" action="{{ url_for('book_trek', trek_id=trek.id) }}">
                   <button class="btn btn-primary" type="submit" {% if trek.available_slots <= 0 %}disabled{% endif %}>Book Trek</button>
@@ -90,13 +90,14 @@
         {% if booked_treks %}
           <div class="table-responsive">
             <table class="table align-middle">
-              <thead><tr><th>Trek</th><th>Booked On</th><th>Status</th><th>Action</th></tr></thead>
+              <thead><tr><th>Trek</th><th>Booked On</th><th>Status</th><th>Payment</th><th>Action</th></tr></thead>
               <tbody>
                 {% for booking in booked_treks %}
                   <tr>
                     <td>{{ booking.trek.trek_name }}</td>
                     <td>{{ booking.booking_date.strftime('%d %b %Y') }}</td>
                     <td>{{ booking.status }}</td>
+                    <td>{{ booking.payment_status }}</td>
                     <td>
                       {% if booking.status == 'Booked' %}
                         <form method="post" action="{{ url_for('cancel_booking', booking_id=booking.id) }}">
