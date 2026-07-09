@@ -1,59 +1,31 @@
 {% extends 'base.html' %}
 {% block title %}Staff Dashboard | Trekking Management{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
-  <div>
-    <h2 class="fw-bold mb-1">Staff Dashboard</h2>
-    <p class="text-secondary mb-0">Manage treks assigned to you.</p>
-  </div>
+<div class="mb-4">
+  <h2>Staff Dashboard</h2>
+  <p class="text-muted">Manage only the treks assigned to you.</p>
 </div>
 
 <div class="row g-3 mb-4">
-  <div class="col-md-4">
-    <div class="stat-card p-4 h-100">
-      <div class="text-uppercase small text-secondary">Assigned Treks</div>
-      <div class="display-6 fw-bold">{{ assigned_treks|length }}</div>
-    </div>
-  </div>
-  <div class="col-md-4">
-    <div class="stat-card p-4 h-100">
-      <div class="text-uppercase small text-secondary">Registered Trekkers</div>
-      <div class="display-6 fw-bold">{{ trek_counts.values() | sum }}</div>
-    </div>
-  </div>
-  <div class="col-md-4">
-    <div class="stat-card p-4 h-100">
-      <div class="text-uppercase small text-secondary">Actions</div>
-      <div class="fw-semibold">Update slots, status, and participants for assigned treks.</div>
-    </div>
-  </div>
+  <div class="col-md-4"><div class="stat-card"><p>Assigned Treks</p><h3>{{ assigned_treks|length }}</h3></div></div>
+  <div class="col-md-4"><div class="stat-card"><p>Registered Trekkers</p><h3>{{ trek_counts.values() | sum }}</h3></div></div>
+  <div class="col-md-4"><div class="stat-card"><p>Role</p><h3>Staff</h3></div></div>
 </div>
 
-<div class="card shadow-sm border-0 mb-4">
-  <div class="card-body">
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-      <h5 class="fw-bold mb-0">Participant Count per Trek</h5>
-      <span class="text-secondary small">Counts only booked participants for assigned treks.</span>
-    </div>
-    <div style="height: 280px;">
-      <canvas id="staffParticipantsChart"></canvas>
-    </div>
-  </div>
-</div>
-
-<div class="row g-4">
+<div class="row g-3">
   {% for trek in assigned_treks %}
     <div class="col-12">
-      <div class="card shadow-sm border-0">
+      <div class="card">
         <div class="card-body">
           <div class="d-flex justify-content-between flex-wrap gap-3">
             <div>
-              <h5 class="fw-bold mb-1">{{ trek.trek_name }}</h5>
-              <div class="text-secondary">{{ trek.location }} • {{ trek.difficulty }} • {{ trek.duration_days }} days</div>
-              <div class="small text-secondary">Slots: {{ trek.available_slots }}/{{ trek.total_slots }} • Participants: {{ trek_counts[trek.id] }}</div>
-              <span class="badge text-bg-{% if trek.status == 'Open' %}success{% elif trek.status == 'Closed' %}secondary{% elif trek.status == 'Ongoing' %}warning{% elif trek.status == 'Completed' %}dark{% else %}info{% endif %}">{{ trek.status }}</span>
+              <h5>{{ trek.trek_name }}</h5>
+              <p class="text-muted mb-1">{{ trek.location }} - {{ trek.difficulty }} - {{ trek.duration_days }} days</p>
+              <p class="mb-1">Slots: {{ trek.available_slots }}/{{ trek.total_slots }}</p>
+              <p class="mb-1">Participants: {{ trek_counts[trek.id] }}</p>
+              <span class="badge text-bg-secondary">{{ trek.status }}</span>
             </div>
-            <div class="d-flex gap-2 flex-wrap align-items-start">
+            <div>
               <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('staff_participants', trek_id=trek.id) }}">Participants</a>
               <a class="btn btn-sm btn-primary" href="{{ url_for('staff_manage_trek', trek_id=trek.id) }}">Manage</a>
             </div>
@@ -63,36 +35,8 @@
     </div>
   {% else %}
     <div class="col-12">
-      <div class="card shadow-sm border-0"><div class="card-body"><p class="text-secondary mb-0">No treks have been assigned yet.</p></div></div>
+      <div class="card"><div class="card-body"><p class="text-muted mb-0">No treks have been assigned yet.</p></div></div>
     </div>
   {% endfor %}
 </div>
-
-{% block page_scripts %}
-  <script>
-    const staffParticipantsCtx = document.getElementById('staffParticipantsChart');
-    new Chart(staffParticipantsCtx, {
-      type: 'bar',
-      data: {
-        labels: {{ staff_chart_labels | tojson }},
-        datasets: [{
-          label: 'Participants',
-          data: {{ staff_chart_values | tojson }},
-          backgroundColor: '#2563eb',
-          borderRadius: 8,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false }
-        },
-        scales: {
-          y: { beginAtZero: true, ticks: { precision: 0 } }
-        }
-      }
-    });
-  </script>
-{% endblock %}
 {% endblock %}

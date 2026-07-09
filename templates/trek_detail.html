@@ -11,9 +11,9 @@
       <span class="badge text-bg-primary align-self-start">{{ trek.status }}</span>
     </div>
     <div class="row g-3 mb-4">
-      <div class="col-md-4"><div class="feature-card p-3"><div class="small text-secondary">Available Slots</div><div class="h4 fw-bold mb-0">{{ trek.available_slots }}/{{ trek.total_slots }}</div></div></div>
-      <div class="col-md-4"><div class="feature-card p-3"><div class="small text-secondary">Start Date</div><div class="h5 fw-bold mb-0">{{ trek.start_date.strftime('%d %b %Y') if trek.start_date else 'TBA' }}</div></div></div>
-      <div class="col-md-4"><div class="feature-card p-3"><div class="small text-secondary">End Date</div><div class="h5 fw-bold mb-0">{{ trek.end_date.strftime('%d %b %Y') if trek.end_date else 'TBA' }}</div></div></div>
+      <div class="col-md-4"><div class="card p-3"><div class="small text-secondary">Available Slots</div><div class="h4 fw-bold mb-0">{{ trek.available_slots }}/{{ trek.total_slots }}</div></div></div>
+      <div class="col-md-4"><div class="card p-3"><div class="small text-secondary">Start Date</div><div class="h5 fw-bold mb-0">{{ trek.start_date.strftime('%d %b %Y') if trek.start_date else 'TBA' }}</div></div></div>
+      <div class="col-md-4"><div class="card p-3"><div class="small text-secondary">End Date</div><div class="h5 fw-bold mb-0">{{ trek.end_date.strftime('%d %b %Y') if trek.end_date else 'TBA' }}</div></div></div>
     </div>
     <p>{{ trek.description or 'No description available.' }}</p>
     {% if current_user.role == 'user' %}

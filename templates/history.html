@@ -1,61 +1,39 @@
 {% extends 'base.html' %}
 {% block title %}History | Trekking Management{% endblock %}
 {% block content %}
-{% set history_labels = history_chart_labels if history_chart_labels else ['No records'] %}
-{% set history_values = history_chart_values if history_chart_values else [1] %}
-<div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
-  <div>
-    <h2 class="fw-bold mb-1">Trekking History</h2>
-    <p class="text-secondary mb-0">Track your booked treks and their current status.</p>
-  </div>
+<div class="mb-4">
+  <h2>Trekking History</h2>
+  <p class="text-muted">All your bookings and completed treks are shown here.</p>
 </div>
 
 <div class="row g-3 mb-4">
-  <div class="col-md-4">
-    <div class="stat-card p-4 h-100">
-      <div class="text-uppercase small text-secondary">Total Records</div>
-      <div class="display-6 fw-bold">{{ bookings|length }}</div>
-    </div>
-  </div>
-  <div class="col-md-4">
-    <div class="stat-card p-4 h-100">
-      <div class="text-uppercase small text-secondary">Active Bookings</div>
-      <div class="display-6 fw-bold">{{ bookings | selectattr('status', 'equalto', 'Booked') | list | length }}</div>
-    </div>
-  </div>
-  <div class="col-md-4">
-    <div class="stat-card p-4 h-100">
-      <div class="text-uppercase small text-secondary">Completed / Cancelled</div>
-      <div class="fw-semibold">Booking history is preserved even after trek completion or cancellation.</div>
-    </div>
-  </div>
+  <div class="col-md-4"><div class="stat-card"><p>Total Records</p><h3>{{ bookings|length }}</h3></div></div>
+  <div class="col-md-4"><div class="stat-card"><p>Active Bookings</p><h3>{{ bookings | selectattr('status', 'equalto', 'Booked') | list | length }}</h3></div></div>
+  <div class="col-md-4"><div class="stat-card"><p>History</p><h3>Saved</h3></div></div>
 </div>
 
-<div class="card shadow-sm border-0 mb-4">
-  <div class="card-body">
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-      <h5 class="fw-bold mb-0">Booking Status Distribution</h5>
-      <span class="text-secondary small">Your historical bookings grouped by status.</span>
-    </div>
-    <div style="height: 280px;">
-      <canvas id="historyStatusChart"></canvas>
-    </div>
-  </div>
-</div>
-
-<div class="card shadow-sm border-0">
+<div class="card">
   <div class="card-body">
     {% if bookings %}
       <div class="table-responsive">
-        <table class="table align-middle">
-          <thead><tr><th>ID</th><th>Trek</th><th>Booked On</th><th>Status</th><th>Payment</th><th>Completion</th></tr></thead>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Trek</th>
+              <th>Booked On</th>
+              <th>Status</th>
+              <th>Payment</th>
+              <th>Trek Status</th>
+            </tr>
+          </thead>
           <tbody>
             {% for booking in bookings %}
               <tr>
                 <td>{{ booking.id }}</td>
                 <td>{{ booking.trek.trek_name }}</td>
                 <td>{{ booking.booking_date.strftime('%d %b %Y') }}</td>
-                <td><span class="badge text-bg-{% if booking.status == 'Booked' %}primary{% elif booking.status == 'Completed' %}success{% else %}secondary{% endif %}">{{ booking.status }}</span></td>
+                <td>{{ booking.status }}</td>
                 <td>{{ booking.payment_status }}</td>
                 <td>{{ booking.trek.status }}</td>
               </tr>
@@ -64,32 +42,8 @@
         </table>
       </div>
     {% else %}
-      <p class="text-secondary mb-0">No booking history available.</p>
+      <p class="text-muted mb-0">No booking history available.</p>
     {% endif %}
   </div>
 </div>
-{% endblock %}
-
-{% block page_scripts %}
-  <script>
-    const historyStatusCtx = document.getElementById('historyStatusChart');
-    new Chart(historyStatusCtx, {
-      type: 'doughnut',
-      data: {
-        labels: {{ history_labels | tojson }},
-        datasets: [{
-          data: {{ history_values | tojson }},
-          backgroundColor: ['#2563eb', '#059669', '#6b7280', '#d97706'],
-          borderWidth: 0,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'bottom' }
-        }
-      }
-    });
-  </script>
 {% endblock %}

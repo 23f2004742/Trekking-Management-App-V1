@@ -1,5 +1,4 @@
 from functools import wraps
-from collections import Counter
 from datetime import datetime, date
 
 from flask import Flask, abort, flash, jsonify, redirect, render_template, request, url_for
@@ -577,8 +576,6 @@ def staff_dashboard():
         "staff_dashboard.html",
         assigned_treks=assigned_treks,
         trek_counts=trek_counts,
-        staff_chart_labels=[trek.trek_name for trek in assigned_treks],
-        staff_chart_values=[trek_counts[trek.id] for trek in assigned_treks],
     )
 
 
@@ -745,13 +742,7 @@ def profile():
 @role_required("user")
 def history():
     bookings = Booking.query.filter_by(user_id=current_user.id).order_by(Booking.booking_date.desc()).all()
-    status_summary = Counter(booking.status for booking in bookings)
-    return render_template(
-        "history.html",
-        bookings=bookings,
-        history_chart_labels=list(status_summary.keys()),
-        history_chart_values=list(status_summary.values()),
-    )
+    return render_template("history.html", bookings=bookings)
 
 
 @app.route("/api/treks", methods=["GET"])
