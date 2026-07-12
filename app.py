@@ -84,6 +84,10 @@ def ensure_staff_profiles():
     db.session.commit()
 
 
+def staff_can_access(user):
+    return user.role != "staff" or (user.is_approved and user.status == "active")
+
+
 def role_required(*roles):
     def decorator(view):
         @wraps(view)
@@ -95,7 +99,7 @@ def role_required(*roles):
                 flask_login_logout_user()
                 flash("Your account has been blacklisted.", "danger")
                 return redirect(url_for("login"))
-            if current_user.role == "staff" and not current_user.is_approved:
+            if not staff_can_access(current_user):
                 flask_login_logout_user()
                 flash("Your staff account is waiting for admin approval.", "warning")
                 return redirect(url_for("login"))
@@ -113,6 +117,14 @@ def login_required(view):
     def wrapped(*args, **kwargs):
         if not current_user.is_authenticated:
             flash("Please log in to continue.", "warning")
+            return redirect(url_for("login"))
+        if current_user.status == "blacklisted":
+            flask_login_logout_user()
+            flash("Your account has been blacklisted.", "danger")
+            return redirect(url_for("login"))
+        if not staff_can_access(current_user):
+            flask_login_logout_user()
+            flash("Your staff account is waiting for admin approval.", "warning")
             return redirect(url_for("login"))
         return view(*args, **kwargs)
 
@@ -268,7 +280,7 @@ def api_auth_required(*roles):
         return api_error("Authentication required.", 401)
     if current_user.status == "blacklisted":
         return api_error("This account is blacklisted.", 403)
-    if current_user.role == "staff" and not current_user.is_approved:
+    if not staff_can_access(current_user):
         return api_error("Staff account is awaiting admin approval.", 403)
     if roles and current_user.role not in roles:
         return api_error("Forbidden.", 403)
@@ -312,7 +324,7 @@ def login():
             flash("This account is blacklisted.", "danger")
             return render_template("login.html")
 
-        if user.role == "staff" and not user.is_approved:
+        if not staff_can_access(user):
             flash("Your staff account is awaiting admin approval.", "warning")
             return render_template("login.html")
 
